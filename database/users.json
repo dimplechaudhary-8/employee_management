@@ -1,0 +1,16 @@
+[
+  {
+    "id": "USR-44010A16",
+    "username": "nakul-sharma",
+    "email": "nakul.tech@outlook.com",
+    "passwordHash": "scrypt:32768:8:1$KmXdw8yGMl4PHsv8$6cc75d32b889f055bcd2211f3d393026d356a6cfb3ffec2caf1017685987b11ee68e0517cc2971c2def2d15791e424a892d5baf9efefe4e55505414167f8d147",
+    "createdAt": "2026-07-20T16:06:58.136203Z"
+  },
+  {
+    "id": "USR-8B8BE739",
+    "username": "User One",
+    "email": "user1@example.com",
+    "passwordHash": "scrypt:32768:8:1$E1IuOjITLlecvunt$57e2136494feafd7abaaef35f1db2bdf71981125e4b8979d0be4efe34ea8721312cfb62967eeeeb95d3fd7dccb8cf7f769efabcb69a2b64aaf4b1b69939da6c4",
+    "createdAt": "2026-07-20T16:09:46.222500Z"
+  }
+]

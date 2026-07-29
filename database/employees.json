@@ -1,0 +1,15 @@
+[
+  {
+    "id": "EMP-1001",
+    "name": "Nakul Sharma",
+    "role": "Data Scientist",
+    "department": "Engineering",
+    "email": "nakulsharmarajsthan@gmail.com",
+    "salary": {
+      "baseSalary": 0.0,
+      "bonuses": 0.0,
+      "deductions": 0.0
+    },
+    "createdAt": "2026-07-20T15:53:57.816525Z"
+  }
+]

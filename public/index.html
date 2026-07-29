@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A premium and responsive web-based Employee Management System to organize team records, contact info, and salary details in a sleek dashboard.">
+  <title>StaffPulse | Employee Management System</title>
+  
+  <!-- Modern Google Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome for Premium Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Announcement / Dashboard bar -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="logo-area">
+        <div class="logo-icon">
+          <i class="fa-solid fa-people-roof"></i>
+        </div>
+        <div>
+          <h1 class="logo-title">StaffPulse</h1>
+          <p class="logo-subtitle">Enterprise Directory & Salaries</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggle" class="btn-icon" aria-label="Toggle Dark Mode">
+          <i class="fa-solid fa-moon moon-icon"></i>
+          <i class="fa-solid fa-sun sun-icon"></i>
+        </button>
+
+        <!-- Logged in User Badge (Hidden by default) -->
+        <div id="userProfileBadge" class="user-profile-badge hidden">
+          <div class="user-avatar">
+            <i class="fa-solid fa-user"></i>
+          </div>
+          <span id="headerUsername" class="user-name">Guest</span>
+          <button id="logoutBtn" class="btn-logout" title="Log Out">
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </button>
+        </div>
+
+        <button id="addEmployeeBtn" class="btn-primary">
+          <i class="fa-solid fa-plus"></i> Add Employee
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Wrapper -->
+  <main class="dashboard-container">
+    
+    <!-- Summary Cards Grid -->
+    <section class="stats-grid" aria-label="Dashboard Metrics">
+      <div class="stat-card" id="cardTotalEmployees">
+        <div class="stat-icon bg-indigo">
+          <i class="fa-solid fa-users"></i>
+        </div>
+        <div class="stat-details">
+          <p class="stat-label">Total Employees</p>
+          <h2 class="stat-val" id="valTotalEmployees">0</h2>
+        </div>
+      </div>
+
+      <div class="stat-card" id="cardTotalBudget">
+        <div class="stat-icon bg-success">
+          <i class="fa-solid fa-wallet"></i>
+        </div>
+        <div class="stat-details">
+          <p class="stat-label">Monthly Payroll</p>
+          <h2 class="stat-val" id="valTotalBudget">$0.00</h2>
+        </div>
+      </div>
+
+      <div class="stat-card" id="cardAverageSalary">
+        <div class="stat-icon bg-violet">
+          <i class="fa-solid fa-scale-balanced"></i>
+        </div>
+        <div class="stat-details">
+          <p class="stat-label">Average Salary</p>
+          <h2 class="stat-val" id="valAverageSalary">$0.00</h2>
+        </div>
+      </div>
+
+      <div class="stat-card" id="cardDepartments">
+        <div class="stat-icon bg-warning">
+          <i class="fa-solid fa-network-wired"></i>
+        </div>
+        <div class="stat-details">
+          <p class="stat-label">Departments</p>
+          <h2 class="stat-val" id="valDepartments">0</h2>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Table Toolbar -->
+    <section class="toolbar-section">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" id="searchInput" placeholder="Search by name, ID, department, or role..." aria-label="Search Employees">
+        <button id="clearSearchBtn" class="btn-clear" aria-label="Clear Search">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="filter-box">
+        <select id="departmentFilter" aria-label="Filter by Department">
+          <option value="">All Departments</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Employees List Section -->
+    <section class="table-container">
+      <div class="table-scroll">
+        <table class="employees-table" id="employeesTable">
+          <thead>
+            <tr>
+              <th scope="col">Employee ID</th>
+              <th scope="col">Name & Email</th>
+              <th scope="col">Department & Role</th>
+              <th scope="col">Base Salary</th>
+              <th scope="col">Allowances & Ded.</th>
+              <th scope="col">Net Pay</th>
+              <th scope="col" class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="employeesTableBody">
+            <!-- Dynamically populated via app.js -->
+            <tr>
+              <td colspan="7" class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading employee data...</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Empty State View -->
+      <div id="emptyState" class="empty-state hidden">
+        <div class="empty-icon">
+          <i class="fa-solid fa-folder-open"></i>
+        </div>
+        <h3>No Employees Found</h3>
+        <p>Try refining your search or add a new employee record to get started.</p>
+        <button id="emptyStateAddBtn" class="btn-secondary">
+          <i class="fa-solid fa-plus"></i> Add First Employee
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Notification Toast Container -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- AUTH MODAL OVERLAY (Login & Sign Up) -->
+  <div id="authModal" class="modal-overlay hidden" aria-hidden="true" role="dialog">
+    <div class="modal-card modal-card-sm auth-card">
+      <div class="auth-header text-center">
+        <div class="auth-logo-icon">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <h2>Welcome to StaffPulse</h2>
+        <p class="auth-subtitle">Sign in to manage your private directory</p>
+      </div>
+
+      <!-- Auth Tabs -->
+      <div class="auth-tabs">
+        <button id="loginTabBtn" class="auth-tab-btn active">Log In</button>
+        <button id="signupTabBtn" class="auth-tab-btn">Sign Up</button>
+      </div>
+
+      <!-- Error Alert -->
+      <div id="authErrorAlert" class="auth-error-alert hidden">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span id="authErrorText">Invalid credentials</span>
+      </div>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="auth-form">
+        <div class="form-group">
+          <label for="loginEmail" class="form-label required-label">Email Address</label>
+          <input type="email" id="loginEmail" class="form-input" placeholder="user@company.com" required>
+        </div>
+        <div class="form-group">
+          <label for="loginPassword" class="form-label required-label">Password</label>
+          <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required>
+        </div>
+        <button type="submit" id="loginSubmitBtn" class="btn-primary btn-full-width">
+          <span class="btn-text">Log In</span>
+          <span class="btn-spinner hidden"></span>
+        </button>
+      </form>
+
+      <!-- Sign Up Form (Hidden by default) -->
+      <form id="signupForm" class="auth-form hidden">
+        <div class="form-group">
+          <label for="signupUsername" class="form-label required-label">Full Name / Username</label>
+          <input type="text" id="signupUsername" class="form-input" placeholder="Alex Mercer" required>
+        </div>
+        <div class="form-group">
+          <label for="signupEmail" class="form-label required-label">Email Address</label>
+          <input type="email" id="signupEmail" class="form-input" placeholder="alex@company.com" required>
+        </div>
+        <div class="form-group">
+          <label for="signupPassword" class="form-label required-label">Password (Min 6 chars)</label>
+          <input type="password" id="signupPassword" class="form-input" placeholder="••••••••" minlength="6" required>
+        </div>
+        <button type="submit" id="signupSubmitBtn" class="btn-primary btn-full-width">
+          <span class="btn-text">Create Account</span>
+          <span class="btn-spinner hidden"></span>
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Employee Form Modal (Add / Edit) -->
+  <div id="employeeModal" class="modal-overlay hidden" aria-hidden="true" role="dialog">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modalTitle">Add New Employee</h2>
+        <button id="closeModalBtn" class="btn-close-modal" aria-label="Close modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="employeeForm" novalidate>
+          <input type="hidden" id="empIdInput" name="id">
+
+          <!-- Section 1: Basic Info -->
+          <fieldset class="form-fieldset">
+            <legend class="form-legend"><i class="fa-solid fa-circle-user"></i> Personal Information</legend>
+            <div class="form-grid">
+              <div class="form-group col-span-2">
+                <label for="empName" class="form-label required-label">Full Name</label>
+                <input type="text" id="empName" name="name" class="form-input" placeholder="e.g. Alex Mercer" required>
+                <span class="error-msg" id="empNameError">Please enter the employee's name.</span>
+              </div>
+
+              <div class="form-group col-span-2">
+                <label for="empEmail" class="form-label required-label">Email Address</label>
+                <input type="email" id="empEmail" name="email" class="form-input" placeholder="e.g. alex@company.com" required>
+                <span class="error-msg" id="empEmailError">Please enter a valid email address.</span>
+              </div>
+
+              <div class="form-group">
+                <label for="empDepartment" class="form-label required-label">Department</label>
+                <input type="text" id="empDepartment" name="department" class="form-input" placeholder="e.g. Engineering" required>
+                <span class="error-msg" id="empDeptError">Department name is required.</span>
+              </div>
+
+              <div class="form-group">
+                <label for="empRole" class="form-label required-label">Job Role / Title</label>
+                <input type="text" id="empRole" name="role" class="form-input" placeholder="e.g. Frontend Dev" required>
+                <span class="error-msg" id="empRoleError">Job role is required.</span>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Section 2: Compensation details -->
+          <fieldset class="form-fieldset">
+            <legend class="form-legend"><i class="fa-solid fa-credit-card"></i> Salary & Benefits</legend>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="empBaseSalary" class="form-label">Base Salary ($)</label>
+                <input type="number" id="empBaseSalary" name="baseSalary" class="form-input" placeholder="e.g. 5000" min="0" value="0">
+              </div>
+
+              <div class="form-group">
+                <label for="empBonuses" class="form-label">Bonuses / Allowances ($)</label>
+                <input type="number" id="empBonuses" name="bonuses" class="form-input" placeholder="e.g. 500" min="0" value="0">
+              </div>
+
+              <div class="form-group">
+                <label for="empDeductions" class="form-label">Deductions / Taxes ($)</label>
+                <input type="number" id="empDeductions" name="deductions" class="form-input" placeholder="e.g. 200" min="0" value="0">
+              </div>
+              
+              <div class="form-group summary-pay-group">
+                <label class="form-label">Estimated Monthly Net Pay</label>
+                <div class="estimated-net-val" id="netPayPreview">$0.00</div>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Actions -->
+          <div class="form-actions">
+            <button type="button" id="cancelFormBtn" class="btn-cancel">Cancel</button>
+            <button type="submit" id="saveEmployeeBtn" class="btn-save">
+              <span class="save-btn-text">Save Employee</span>
+              <span class="save-spinner hidden"></span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="deleteModal" class="modal-overlay hidden" aria-hidden="true" role="dialog">
+    <div class="modal-card modal-card-sm">
+      <div class="modal-header header-danger">
+        <h2>Confirm Deletion</h2>
+        <button id="closeDeleteModalBtn" class="btn-close-modal" aria-label="Close modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="modal-body text-center">
+        <div class="warning-icon-wrapper">
+          <i class="fa-solid fa-circle-exclamation text-danger"></i>
+        </div>
+        <p class="delete-warning-text">Are you sure you want to permanently remove employee <strong id="deleteEmpName"></strong> from the system?</p>
+        <p class="delete-warning-sub">This action cannot be undone.</p>
+        
+        <div class="form-actions justify-center">
+          <button type="button" id="cancelDeleteBtn" class="btn-cancel">Cancel</button>
+          <button type="button" id="confirmDeleteBtn" class="btn-danger-action">Delete Record</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client-side Scripts -->
+  <script src="app.js"></script>
+</body>
+</html>
