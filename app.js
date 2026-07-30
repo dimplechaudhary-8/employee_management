@@ -70,6 +70,255 @@ const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 const toastContainer = document.getElementById('toastContainer');
 
 /* -------------------------------------------------------------
+ * Dynamic API Routing Layer (Real Flask backend vs GitHub Pages LocalStorage fallback)
+ * ------------------------------------------------------------- */
+const isGitHubPages = window.location.hostname.endsWith('github.io') || window.location.protocol === 'file:';
+
+// Initialize mock DB keys in LocalStorage if they don't exist
+if (isGitHubPages) {
+  if (!localStorage.getItem('users')) localStorage.setItem('users', JSON.stringify([]));
+  if (!localStorage.getItem('employees')) localStorage.setItem('employees', JSON.stringify([]));
+}
+
+// Simulated Server for GitHub Pages deployment
+function mockServerFetch(url, options = {}) {
+  return new Promise((resolve) => {
+    // Simulate natural server response delay (150ms)
+    setTimeout(() => {
+      const method = options.method || 'GET';
+      const body = options.body ? JSON.parse(options.body) : null;
+      
+      const getUsers = () => JSON.parse(localStorage.getItem('users') || '[]');
+      const getEmployees = () => JSON.parse(localStorage.getItem('employees') || '[]');
+      const getCurrentUser = () => JSON.parse(localStorage.getItem('currentUser') || 'null');
+      
+      // Route 1: check user session
+      if (url === '/api/auth/me' && method === 'GET') {
+        const u = getCurrentUser();
+        return resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ authenticated: !!u, user: u })
+        });
+      }
+      
+      // Route 2: register user
+      if (url === '/api/auth/signup' && method === 'POST') {
+        const users = getUsers();
+        const existing = users.find(u => u.email === body.email);
+        if (existing) {
+          return resolve({
+            ok: false,
+            status: 400,
+            json: async () => ({ error: 'Email address already registered.' })
+          });
+        }
+        
+        const newUser = {
+          id: 'USR-' + Math.floor(1000 + Math.random() * 9000),
+          username: body.username,
+          email: body.email
+        };
+        
+        users.push({ ...newUser, password: body.password });
+        localStorage.setItem('users', JSON.stringify(users));
+        localStorage.setItem('currentUser', JSON.stringify(newUser));
+        
+        return resolve({
+          ok: true,
+          status: 201,
+          json: async () => ({ user: newUser })
+        });
+      }
+      
+      // Route 3: log in user
+      if (url === '/api/auth/login' && method === 'POST') {
+        const users = getUsers();
+        const user = users.find(u => u.email === body.email && u.password === body.password);
+        if (!user) {
+          return resolve({
+            ok: false,
+            status: 400,
+            json: async () => ({ error: 'Invalid email or password.' })
+          });
+        }
+        
+        const safeUser = { id: user.id, username: user.username, email: user.email };
+        localStorage.setItem('currentUser', JSON.stringify(safeUser));
+        
+        return resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ user: safeUser })
+        });
+      }
+      
+      // Route 4: log out user
+      if (url === '/api/auth/logout' && method === 'POST') {
+        localStorage.removeItem('currentUser');
+        return resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ message: 'Logged out successfully.' })
+        });
+      }
+      
+      // Protect other routes
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        return resolve({
+          ok: false,
+          status: 401,
+          json: async () => ({ error: 'Unauthorized.' })
+        });
+      }
+      
+      // Route 5: get scoped employee list
+      if (url.startsWith('/api/employees') && method === 'GET') {
+        const employees = getEmployees().filter(emp => emp.user_id === currentUser.id);
+        
+        // Handle search query
+        const urlObj = new URL(url, window.location.origin);
+        const search = urlObj.searchParams.get('search');
+        
+        let filtered = employees;
+        if (search) {
+          const q = search.toLowerCase();
+          filtered = employees.filter(emp => 
+            emp.id.toLowerCase().includes(q) ||
+            emp.name.toLowerCase().includes(q) ||
+            emp.email.toLowerCase().includes(q) ||
+            emp.department.toLowerCase().includes(q) ||
+            emp.role.toLowerCase().includes(q)
+          );
+        }
+        
+        return resolve({
+          ok: true,
+          status: 200,
+          json: async () => filtered
+        });
+      }
+      
+      // Route 6: add new employee
+      if (url === '/api/employees' && method === 'POST') {
+        const employees = getEmployees();
+        
+        // Find maximum ID number to increment
+        const existingIds = employees.map(emp => {
+          const match = emp.id.match(/\d+/);
+          return match ? parseInt(match[0], 10) : 1000;
+        });
+        const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 1000;
+        const nextId = `EMP-${maxId + 1}`;
+        
+        const newEmp = {
+          id: nextId,
+          user_id: currentUser.id,
+          name: body.name,
+          email: body.email,
+          department: body.department,
+          role: body.role,
+          salary: {
+            baseSalary: body.baseSalary,
+            bonuses: body.bonuses,
+            deductions: body.deductions
+          },
+          createdAt: new Date().toISOString()
+        };
+        
+        employees.push(newEmp);
+        localStorage.setItem('employees', JSON.stringify(employees));
+        
+        return resolve({
+          ok: true,
+          status: 201,
+          json: async () => newEmp
+        });
+      }
+      
+      // Route 7: update employee
+      if (url.startsWith('/api/employees/') && method === 'PUT') {
+        const id = url.split('/').pop();
+        const employees = getEmployees();
+        const index = employees.findIndex(emp => emp.id === id && emp.user_id === currentUser.id);
+        
+        if (index === -1) {
+          return resolve({
+            ok: false,
+            status: 404,
+            json: async () => ({ error: 'Employee not found.' })
+          });
+        }
+        
+        const updatedEmp = {
+          ...employees[index],
+          name: body.name,
+          email: body.email,
+          department: body.department,
+          role: body.role,
+          salary: {
+            baseSalary: body.baseSalary,
+            bonuses: body.bonuses,
+            deductions: body.deductions
+          }
+        };
+        
+        employees[index] = updatedEmp;
+        localStorage.setItem('employees', JSON.stringify(employees));
+        
+        return resolve({
+          ok: true,
+          status: 200,
+          json: async () => updatedEmp
+        });
+      }
+      
+      // Route 8: delete employee
+      if (url.startsWith('/api/employees/') && method === 'DELETE') {
+        const id = url.split('/').pop();
+        let employees = getEmployees();
+        const existing = employees.find(emp => emp.id === id && emp.user_id === currentUser.id);
+        
+        if (!existing) {
+          return resolve({
+            ok: false,
+            status: 404,
+            json: async () => ({ error: 'Employee not found.' })
+          });
+        }
+        
+        employees = employees.filter(emp => !(emp.id === id && emp.user_id === currentUser.id));
+        localStorage.setItem('employees', JSON.stringify(employees));
+        
+        return resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ message: 'Employee deleted successfully.' })
+        });
+      }
+      
+      // Fallback fallback
+      return resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({ error: 'Not found.' })
+      });
+    }, 150);
+  });
+}
+
+// Global API Request Wrapper
+const api = {
+  fetch(url, options = {}) {
+    if (isGitHubPages) {
+      return mockServerFetch(url, options);
+    }
+    return window.fetch(url, options);
+  }
+};
+
+/* -------------------------------------------------------------
  * Initialization & Theme Operations
  * ------------------------------------------------------------- */
 document.addEventListener('DOMContentLoaded', () => {
@@ -95,7 +344,7 @@ function toggleTheme() {
  * ------------------------------------------------------------- */
 async function checkAuthStatus() {
   try {
-    const res = await fetch('/api/auth/me');
+    const res = await api.fetch('/api/auth/me');
     const data = await res.json();
     if (data.authenticated) {
       currentUserState = data.user;
@@ -176,7 +425,7 @@ async function handleLoginSubmit(e) {
   setBtnLoading(loginSubmitBtn, true);
 
   try {
-    const res = await fetch('/api/auth/login', {
+    const res = await api.fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -214,7 +463,7 @@ async function handleSignupSubmit(e) {
   setBtnLoading(signupSubmitBtn, true);
 
   try {
-    const res = await fetch('/api/auth/signup', {
+    const res = await api.fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, email, password })
@@ -238,7 +487,7 @@ async function handleSignupSubmit(e) {
 
 async function handleLogout() {
   try {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await api.fetch('/api/auth/logout', { method: 'POST' });
     currentUserState = null;
     employeesState = [];
     updateDashboardStats([]);
@@ -327,7 +576,7 @@ async function fetchEmployees(searchQuery = '') {
       ? `/api/employees?search=${encodeURIComponent(searchQuery)}`
       : '/api/employees';
 
-    const response = await fetch(url);
+    const response = await api.fetch(url);
     if (response.status === 401) {
       showUnauthenticatedUI();
       return;
@@ -388,7 +637,7 @@ async function handleFormSubmit(e) {
     const url = isEdit ? `/api/employees/${currentEditingId}` : '/api/employees';
     const method = isEdit ? 'PUT' : 'POST';
 
-    const response = await fetch(url, {
+    const response = await api.fetch(url, {
       method,
       headers: {
         'Content-Type': 'application/json'
@@ -425,7 +674,7 @@ async function deleteEmployee() {
   if (!currentDeletingId) return;
 
   try {
-    const response = await fetch(`/api/employees/${currentDeletingId}`, {
+    const response = await api.fetch(`/api/employees/${currentDeletingId}`, {
       method: 'DELETE'
     });
     const result = await response.json();
@@ -713,6 +962,7 @@ function validateForm() {
   return isValid;
 }
 
+// Show error style
 function showInputError(inputEl, errorId) {
   const group = inputEl.closest('.form-group');
   group.classList.add('has-error');
@@ -758,6 +1008,7 @@ function showToast(message, type = 'success') {
   }, 4000);
 }
 
+// Dismiss toast animation helper
 function dismissToast(toastEl) {
   if (toastEl.parentNode) {
     toastEl.classList.add('fade-out');

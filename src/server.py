@@ -6,7 +6,7 @@ from flask import Flask, request, jsonify, send_from_directory, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils.db import read_employees, write_employees, read_users, write_users
 
-app = Flask(__name__, static_folder='../public', static_url_path='')
+app = Flask(__name__, static_folder='..', static_url_path='')
 app.secret_key = os.environ.get('SECRET_KEY', 'staffpulse_secure_session_key_998877')
 
 # Helpers
@@ -331,6 +331,11 @@ def delete_employee(emp_id):
 def catch_all(path):
     if path.startswith('api/'):
         return jsonify({"error": "Not Found"}), 404
+        
+    # Prevent exposing sensitive python code or local json database files
+    blocked_extensions = ['.py', '.json', '.txt', '.md', '.gitignore', '.log']
+    if any(path.endswith(ext) for ext in blocked_extensions) or 'database' in path or 'src' in path:
+        return jsonify({"error": "Forbidden"}), 403
         
     file_path = os.path.join(app.static_folder, path)
     if path and os.path.exists(file_path):
